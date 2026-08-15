@@ -45,8 +45,20 @@ variable "map_public_ip_on_launch" {
   default     = true
 }
 
-variable "instance_type" {
+variable "ec2_instance_type" {
   type        = string
   description = "Type for EC2 Instance"
   default     = "t3.micro"
+}
+
+variable "http_port" {
+  type        = string
+  description = "Http port serve from server"
+  default     = "80"
+}
+
+variable "my_public_ip" {
+  type        = string
+  description = "Allowing connections to specific IP. Default allows world"
+  default     = "0.0.0.0/0"
 }

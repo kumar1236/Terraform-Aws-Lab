@@ -4,3 +4,4 @@ locals {
     project = "${var.company}-${var.project}"
   }
 }
+
