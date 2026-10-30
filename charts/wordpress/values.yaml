@@ -1,0 +1,54 @@
+# Set these to the image you build and push to ECR.
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+wordpress:
+  replicas: 1
+  publicUrl: http://localhost:8080
+  persistence:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+database:
+  # MariaDB is a separate container; this official image is pulled from Docker Hub.
+  image:
+    repository: docker.io/library/mariadb
+    tag: "11.8.9"
+    digest: sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd
+    pullPolicy: IfNotPresent
+  name: wordpress
+  username: wordpress
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+storageClass:
+  create: true
+  name: wordpress-gp3
+  reclaimPolicy: Retain
+
+# ESO creates a Kubernetes Secret with root-password and wordpress-password keys.
+externalSecrets:
+  enabled: true
+  region: ap-south-1
+  secretName: wp-lab/wordpress/database
+  refreshInterval: 1h
+
+# Alternative: disable externalSecrets and supply an already-created Secret.
+# It must contain root-password and wordpress-password.
+secrets:
+  existingSecret: ""

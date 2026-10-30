@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "image",
+    "wordpress",
+    "database",
+    "storageClass",
+    "externalSecrets",
+    "secrets"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "tag",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com(\\.cn)?/[a-z0-9][a-z0-9._/-]*$"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "IfNotPresent",
+            "Always"
+          ]
+        }
+      }
+    },
+    "wordpress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replicas",
+        "publicUrl",
+        "persistence",
+        "resources"
+      ],
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "publicUrl": {
+          "type": "string",
+          "pattern": "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}$"
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "size"
+          ],
+          "properties": {
+            "size": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*(Gi|Ti)$"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "required": [
+                "cpu",
+                "memory"
+              ]
+            },
+            "limits": {
+              "type": "object",
+              "required": [
+                "cpu",
+                "memory"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "image",
+        "name",
+        "username",
+        "persistence",
+        "resources"
+      ],
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "IfNotPresent",
+                "Always"
+              ]
+            }
+          }
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+        },
+        "username": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$",
+          "not": {
+            "const": "root"
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "size"
+          ],
+          "properties": {
+            "size": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*(Gi|Ti)$"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "required": [
+                "cpu",
+                "memory"
+              ]
+            },
+            "limits": {
+              "type": "object",
+              "required": [
+                "cpu",
+                "memory"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "storageClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create",
+        "name",
+        "reclaimPolicy"
+      ],
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "reclaimPolicy": {
+          "enum": [
+            "Retain",
+            "Delete"
+          ]
+        }
+      }
+    },
+    "externalSecrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "region",
+        "secretName",
+        "refreshInterval"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "region": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[a-z]+)+-[0-9]+$"
+        },
+        "secretName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refreshInterval": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(s|m|h)$"
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "existingSecret"
+      ],
+      "properties": {
+        "existingSecret": {
+          "type": "string",
+          "maxLength": 63
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "externalSecrets": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "secrets": {
+            "properties": {
+              "existingSecret": {
+                "maxLength": 0
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "secrets": {
+            "properties": {
+              "existingSecret": {
+                "minLength": 1,
+                "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

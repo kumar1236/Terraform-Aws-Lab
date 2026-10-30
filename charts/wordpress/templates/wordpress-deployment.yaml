@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wordpress.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "wordpress.labels" . | nindent 4 }}
+    app.kubernetes.io/component: wordpress
+spec:
+  replicas: {{ .Values.wordpress.replicas }}
+  # One RWO EBS disk: stop the old pod before attaching the disk to its replacement.
+  strategy:
+    type: Recreate
+  minReadySeconds: 5
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      {{- include "wordpress.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: wordpress
+  template:
+    metadata:
+      labels:
+        {{- include "wordpress.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: wordpress
+    spec:
+      serviceAccountName: {{ include "wordpress.name" . }}
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        fsGroup: 33
+      containers:
+        - name: wordpress
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [NET_RAW]
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: {{ printf "%s:3306" (include "wordpress.databaseName" .) | quote }}
+            - name: WORDPRESS_DB_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: WORDPRESS_DB_USER
+              value: {{ .Values.database.username | quote }}
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wordpress.secretName" . }}
+                  key: wordpress-password
+            - name: WORDPRESS_PUBLIC_URL
+              value: {{ .Values.wordpress.publicUrl | quote }}
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('WP_HOME', getenv('WORDPRESS_PUBLIC_URL'));
+                define('WP_SITEURL', getenv('WORDPRESS_PUBLIC_URL'));
+                define('DISALLOW_FILE_EDIT', true);
+                define('WP_AUTO_UPDATE_CORE', false);
+          resources:
+            {{- toYaml .Values.wordpress.resources | nindent 12 }}
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: {{ (urlParse .Values.wordpress.publicUrl).host | quote }}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: content
+              mountPath: /var/www/html/wp-content
+      volumes:
+        - name: content
+          persistentVolumeClaim:
+            claimName: {{ include "wordpress.contentClaim" . }}

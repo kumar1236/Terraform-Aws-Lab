@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "wordpress.databaseName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "wordpress.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ include "wordpress.databaseName" . }}
+  replicas: 1
+  revisionHistoryLimit: 2
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      {{- include "wordpress.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "wordpress.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+    spec:
+      serviceAccountName: {{ include "wordpress.databaseName" . }}
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: mariadb
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}@{{ .Values.database.image.digest }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - name: mysql
+              containerPort: 3306
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [NET_RAW]
+          env:
+            - name: MARIADB_ROOT_HOST
+              value: localhost
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wordpress.secretName" . }}
+                  key: root-password
+            - name: MARIADB_DATABASE
+              value: {{ .Values.database.name | quote }}
+            - name: MARIADB_USER
+              value: {{ .Values.database.username | quote }}
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wordpress.secretName" . }}
+                  key: wordpress-password
+          resources:
+            {{- toYaml .Values.database.resources | nindent 12 }}
+          startupProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.storageClass.name | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.database.persistence.size | quote }}

@@ -1,64 +1,52 @@
-variable "company" {
-  type        = string
-  description = "Company name for resource tagging"
-  default     = "Moo-Tastic"
-}
-
-variable "project" {
-  type        = string
-  description = "Project name for resource tagging"
-}
-
 variable "aws_region" {
+  description = "AWS region where we will create the infrastructure."
   type        = string
-  description = "AWS region for deployment"
   default     = "ap-south-1"
 }
 
-variable "vpc_cidr" {
+variable "project" {
+  description = "Project name used to name and tag our AWS resources."
   type        = string
-  description = "VPC Cidr Block"
-  default     = "10.100.0.0/23"
+  default     = "wp-lab"
 }
 
-variable "enable_dns_hostnames" {
-  type        = bool
-  description = "Enable DNS hostnames in VPC"
-  default     = true
-}
-
-variable "vpc_public_subnet" {
+# Upgrade preparation (baseline observed on 2026-10-29).
+# Keep all defaults at the running versions before planning any upgrade.
+# Separate targets let us review control-plane, worker and add-on changes in stages.
+variable "eks_cluster_version" {
+  description = "EKS control-plane Kubernetes version. Advance one minor version per reviewed upgrade."
   type        = string
-  description = "VPC Public Subnet"
-  default     = "10.100.0.0/24"
+  default     = "1.36"
 }
 
-variable "vpc_private_subnet" {
+variable "eks_node_version" {
+  description = "Managed-worker Kubernetes version, controlled independently from the control plane."
   type        = string
-  description = "VPC Private Subnet"
-  default     = "10.100.1.0/24"
+  default     = "1.36"
 }
 
-variable "map_public_ip_on_launch" {
-  type        = bool
-  description = "Map a public IP address for Subnet instances"
-  default     = true
-}
-
-variable "ec2_instance_type" {
+variable "eks_node_ami_release_version" {
+  description = "Explicit AL2023 worker AMI release, initially matching the running node group."
   type        = string
-  description = "Type for EC2 Instance"
-  default     = "t3.micro"
+  default     = "1.36.5-20261026"
 }
 
-variable "http_port" {
-  type        = string
-  description = "Http port serve from server"
-  default     = "80"
-}
-
-variable "my_public_ip" {
-  type        = string
-  description = "Allowing connections to specific IP. Default allows world"
-  default     = "0.0.0.0/0"
+# These are EKS add-on package versions from describe-addon, not container image tags.
+# Select replacement versions only after checking compatibility for each upgrade stage.
+variable "eks_addon_versions" {
+  description = "Reviewed EKS managed add-on versions; fixed defaults prevent automatic latest-version changes."
+  type = object({
+    pod_identity_agent = string
+    vpc_cni            = string
+    kube_proxy         = string
+    coredns            = string
+    ebs_csi            = string
+  })
+  default = {
+    pod_identity_agent = "v1.4.1-eksbuild.3"
+    vpc_cni            = "v1.23.2-eksbuild.8"
+    kube_proxy         = "v1.36.0-eksbuild.58"
+    coredns            = "v1.13.2-eksbuild.62"
+    ebs_csi            = "v1.67.2-eksbuild.1"
+  }
 }

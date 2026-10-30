@@ -1,7 +1,15 @@
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 terraform.tfvars
+terraform.tfvars.json
 *.auto.tfvars
+*.auto.tfvars.json
 crash.log
 crash.*.log
+
+# Local chart cache, rendered manifests, and personal chart overrides.
+.cache/
+rendered/
+charts/wordpress/values.local.yaml
