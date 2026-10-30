@@ -213,6 +213,17 @@ setup wizard to choose your site administrator credentials; these are separate
 from the database passwords. No ALB, Ingress or public application port is
 created. Your public IP is used only for the EKS API allowlist.
 
+## EKS upgrades
+
+Use the [reusable EKS upgrade process](docs/eks-upgrade-process.md) for future
+minor-version upgrades. It defines shared procedures and validation commands
+once, covering readiness, staged Terraform plans, workers, add-ons, application
+checks, and recovery considerations.
+
+The [completed 1.34 -> 1.35 -> 1.36 lab record](docs/eks-upgrade-record.md)
+links each historical stage to those procedures and includes a future-record
+template.
+
 ## Updates and data
 
 - For a new image, build/push with a new tag, rerun the renderer using that tag,
